@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#7d1d3f">
+  <title>Suit Picker</title>
+  <meta name="description" content="Pakistani-style embroidered readymade suits from Indian wholesalers, ₹1000–2000 per piece, sets of up to 3.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%237d1d3f'/%3E%3Cpath d='M22 14h20l6 10-6 4v24H22V28l-6-4z' fill='%23f6e7c8'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <div class="brand">
+        <h1>Suit Picker</h1>
+        <p class="sub">Pakistani readymade suits · ₹1000–2000 per piece · sets of up to 3</p>
+      </div>
+      <div class="search-row">
+        <label class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="q" type="search" placeholder="Search fabric, brand, colour…" autocomplete="off">
+        </label>
+        <button id="favs-toggle" class="pill fav-pill" aria-pressed="false">♥ <span>My picks</span> <b id="fav-count">0</b></button>
+      </div>
+      <div class="filters" id="filters"></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="status-row">
+      <p id="status" aria-live="polite">Loading suits…</p>
+      <label class="sort">Sort
+        <select id="sort">
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
+          <option value="mix">Mix of sites</option>
+          <option value="photos">Most photos</option>
+        </select>
+      </label>
+    </div>
+    <div id="grid" class="grid"></div>
+    <p id="empty" class="empty" hidden>No suits match these filters. <button id="reset" class="link">Clear filters</button></p>
+  </main>
+
+  <footer class="wrap foot">
+    <p id="foot-note"></p>
+  </footer>
+
+  <div id="detail" class="detail" role="dialog" aria-modal="true" aria-labelledby="d-title" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
