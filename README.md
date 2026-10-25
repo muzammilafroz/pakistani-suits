@@ -27,6 +27,17 @@ snapshot — always confirm on the seller's page.
 
 ## Refreshing the data
 
+**Automatic:** the [Weekly suit refresh](.github/workflows/refresh.yml) workflow runs every Monday
+at 07:00 IST. It re-scrapes all sites, rebuilds `docs/data/suits.json`, commits it and republishes
+the site. To refresh right away: Actions → Weekly suit refresh → Run workflow.
+
+Safety checks so a bad run never empties the page:
+- if a site errors, or returns under half as many suits as last time, its previous results in
+  `scraper/data/` are kept (and dropped once they are 30 days old);
+- if fewer than 100 suits remain, the run fails and the live page stays as it was.
+
+**By hand:**
+
 ```
 python -m venv .venv
 .venv\Scripts\python -m pip install -r scraper\requirements.txt
@@ -34,8 +45,8 @@ python -m venv .venv
 ```
 
 `scraper/build.py scrape <site>` re-scrapes one site; `scraper/build.py build` only re-filters.
-Responses are cached in `scraper/.cache/` (delete it for a completely fresh scrape). The scraper
-waits one second between requests to each site.
+Pages are cached in `scraper/.cache/` for 20 hours, so re-runs on the same day are quick. The
+scraper waits one second between requests to each site.
 
 Filters applied in `build.py`: stitched only (no unstitched / semi-stitched / dress material),
 pieces ≤ 3, ₹1000–2000 per piece, in stock where the site's stock flag is reliable, not

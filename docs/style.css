@@ -169,6 +169,7 @@ button { cursor: pointer; }
 .price-box .row b { color: var(--ink); }
 .stock { font-size: .88rem; font-weight: 600; }
 .stock.ok { color: var(--ok); } .stock.check { color: var(--warn); }
+.stock .checked { font-weight: 400; color: var(--muted); }
 .colours { display: flex; flex-wrap: wrap; gap: 6px; }
 .colour { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px 4px 5px; font-size: .85rem; }
 .colour i { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); }

@@ -1,8 +1,11 @@
 """Scrape the wholesale sites and build docs/data/suits.json.
 
-    python scraper/build.py scrape [site ...]   # refresh raw per-site output in .cache/out/
+    python scraper/build.py scrape [site ...]   # refresh raw per-site output in scraper/data/
     python scraper/build.py build               # filter, dedupe, colour swatches -> docs/data/suits.json
     python scraper/build.py                     # both
+
+The weekly GitHub Actions job runs the last form. scraper/data/ is committed so that a site that
+fails or gets blocked keeps its last good results (for up to STALE_DAYS) instead of vanishing.
 """
 import importlib
 import json
@@ -10,7 +13,7 @@ import re
 import sys
 import traceback
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date
+from datetime import date, timedelta
 from itertools import zip_longest
 
 from colors import swatches, text_colours
@@ -19,21 +22,30 @@ from common import CACHE, ROOT, image_ok, in_budget
 DOCS_DATA = ROOT.parent / "docs" / "data"
 SITES = ["textileexport", "clothingexporter", "vardanethnic", "textilecatalog",
          "theethnicworld", "wholesalecatalogz", "textilezone"]
-OUT = CACHE / "out"
+OUT = ROOT / "data"
+MIN_SUITS = 100          # refuse to publish a smaller list
+SHRINK_LIMIT = 0.5       # a site returning under half its previous count is treated as a bad scrape
+STALE_DAYS = 30          # drop a site's fallback records once they are this old
+IMAGE_RECHECK_DAYS = 6
 
 
 def scrape(names):
     OUT.mkdir(parents=True, exist_ok=True)
     for name in names:
+        path = OUT / f"{name}.json"
+        previous = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
         print(f"[{name}] scraping...", flush=True)
         try:
             records = importlib.import_module(f"sites.{name}").scrape()
         except Exception:
             traceback.print_exc()
-            print(f"[{name}] FAILED — keeping previous output if any")
+            print(f"[{name}] FAILED — keeping the previous {len(previous)} records")
             continue
-        (OUT / f"{name}.json").write_text(json.dumps(records, ensure_ascii=False, indent=1),
-                                          encoding="utf-8")
+        if len(previous) >= 10 and len(records) < SHRINK_LIMIT * len(previous):
+            print(f"[{name}] only {len(records)} records vs {len(previous)} last time — "
+                  f"probably blocked or changed; keeping the previous records")
+            continue
+        path.write_text(json.dumps(records, ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"[{name}] {len(records)} candidate records")
 
 
@@ -88,18 +100,21 @@ def design_key(r):
 
 
 def check_images(records):
-    """Drop dead image links (results cached between runs)."""
+    """Drop dead image links (results cached for IMAGE_RECHECK_DAYS)."""
     cache_path = CACHE / "imgcheck.json"
     known = json.loads(cache_path.read_text(encoding="utf-8")) if cache_path.exists() else {}
+    fresh_since = (date.today() - timedelta(days=IMAGE_RECHECK_DAYS)).isoformat()
+    known = {u: v for u, v in known.items() if isinstance(v, list) and v[1] >= fresh_since}
     todo = sorted({u for r in records for u in r["images"] if u not in known})
     print(f"checking {len(todo)} image links...", flush=True)
     with ThreadPoolExecutor(max_workers=8) as pool:
         for url, ok in zip(todo, pool.map(image_ok, todo)):
-            known[url] = ok
+            known[url] = [ok, date.today().isoformat()]
+    CACHE.mkdir(parents=True, exist_ok=True)
     cache_path.write_text(json.dumps(known), encoding="utf-8")
     for r in records:
         keep = [(u, a) for u, a in zip_longest(r["images"], r["imageAlts"][:len(r["images"])])
-                if known.get(u)]
+                if known.get(u, [False])[0]]
         r["images"] = [u for u, _ in keep]
         r["imageAlts"] = [a or "" for _, a in keep] if r["imageAlts"] else []
     return [r for r in records if r["images"]]
@@ -114,6 +129,10 @@ def build():
             continue
         recs = json.loads(path.read_text(encoding="utf-8"))
         s = stats[name] = {"scraped": len(recs)}
+        oldest_ok = (date.today() - timedelta(days=STALE_DAYS)).isoformat()
+        if recs and max(r["scrapedAt"] for r in recs) < oldest_ok:
+            print(f"[{name}] data older than {STALE_DAYS} days — left out")
+            recs = []
         recs = list({r["url"]: r for r in recs}.values())
         recs = [r for r in recs if not NOT_STITCHED.search(r["title"] + " " + r["description"])]
         s["stitched"] = len(recs)
@@ -165,18 +184,18 @@ def build():
         r.setdefault("alsoOn", [])
         suits.append(r)
 
-    DOCS_DATA.mkdir(parents=True, exist_ok=True)
-    payload = {"generatedAt": date.today().isoformat(), "count": len(suits), "suits": suits}
-    (DOCS_DATA / "suits.json").write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
-                                          encoding="utf-8")
-
     cols = ["scraped", "stitched", "budget+set<=3", "in stock", "embroidered", "suit style", "final"]
     print(f"\n{'site':<18}" + "".join(f"{c:>15}" for c in cols))
     for name, s in stats.items():
         print(f"{name:<18}" + "".join(f"{s.get(c, ''):>15}" for c in cols))
+    if len(suits) < MIN_SUITS:
+        sys.exit(f"\nERROR: only {len(suits)} suits (minimum {MIN_SUITS}) — suits.json left unchanged")
+
+    DOCS_DATA.mkdir(parents=True, exist_ok=True)
+    payload = {"generatedAt": date.today().isoformat(), "count": len(suits), "suits": suits}
+    (DOCS_DATA / "suits.json").write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+                                          encoding="utf-8")
     print(f"\nTOTAL suits written: {len(suits)} -> {DOCS_DATA / 'suits.json'}")
-    if len(suits) < 100:
-        print("WARNING: fewer than 100 suits")
 
 
 if __name__ == "__main__":

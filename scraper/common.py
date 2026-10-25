@@ -30,7 +30,7 @@ def _throttle(host):
     _last_hit[host] = time.monotonic()
 
 
-def fetch(url, *, method="GET", json_body=None, headers=None, max_age_hours=None):
+def fetch(url, *, method="GET", json_body=None, headers=None, max_age_hours=20):
     """Return the response text, served from the on-disk cache when available."""
     host = urlsplit(url).netloc
     key = hashlib.sha1(f"{method} {url} {json.dumps(json_body, sort_keys=True)}".encode()).hexdigest()

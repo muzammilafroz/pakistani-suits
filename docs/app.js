@@ -234,9 +234,11 @@
     const strip = s.images.map((u, i) =>
       `<button data-go="${i}" aria-label="Show photo ${i + 1}" aria-current="${i === 0}">${imgTag(u, "")}</button>`).join("");
     const setText = s.pieces === 1 ? "Sold as a single piece" : `Sold as a set of ${s.pieces} pieces (one of each design)`;
+    const checked = s.scrapedAt
+      ? ` <span class="checked">(checked ${esc(new Date(s.scrapedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }))})</span>` : "";
     const stock = s.stockReliable
-      ? `<div class="stock ok">● In stock when last checked</div>`
-      : `<div class="stock check">● Check availability on the seller's page</div>`;
+      ? `<div class="stock ok">● In stock when last checked${checked}</div>`
+      : `<div class="stock check">● Check availability on the seller's page${checked}</div>`;
     const colours = s.colors.length
       ? `<div><h3 class="section-h">Colours mentioned by seller</h3><div class="colours">${s.colors.map((c) =>
         `<span class="colour"><i style="background:${esc(c.css)}"></i>${esc(c.name)}</span>`).join("")}</div></div>` : "";
